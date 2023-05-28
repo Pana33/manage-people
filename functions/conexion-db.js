@@ -2,6 +2,7 @@ const admin = require('firebase-admin');
 admin.initializeApp();
 
 const { getFirestore } = require("firebase-admin/firestore");
+const { getAuth } = require("firebase-admin/auth")
 const db = getFirestore();
 
 export function createDocument(table,idDocument,document){
@@ -9,7 +10,7 @@ export function createDocument(table,idDocument,document){
         createUser(idDocument).then(resCreate=>{
             db.collection(table).doc(idDocument).set(document).then(resDocument=>{
                 console.log("Document created")
-                res("Ok")
+                res("ok")
             }).catch(errDocument=>{
                 console.log("The document can't be created")
                 rej("Error creating document")
@@ -25,7 +26,7 @@ export function updateDocument(table,idDocument,document,typeUpdate){
     return new Promise((res,rej)=>{
         if(typeUpdate == "info"){
             db.collection(table).doc(idDocument).update(document).then(resInfo=>{
-                res("Ok")
+                res("ok")
             }).catch(errActive=>{
                 rej("error updating on database")
             })
@@ -33,7 +34,7 @@ export function updateDocument(table,idDocument,document,typeUpdate){
             getUidUser(idDocument).then(resUid=>{
                 db.collection(table).doc(idDocument).update(document).then(resUpdate=>{
                     changeActiveUser(resUid.getUid(),document).then(resActive=>{
-                        res("Ok")
+                        res("ok")
                     }).catch(errActive=>{
                         rej("error isActive on auth user")
                     })
@@ -52,7 +53,7 @@ export function deleteDocument(table,idDocument){
         getUidUser(idDocument).then(resUid=>{
             db.collection(table).doc(idDocument).delete().then(resDelete=>{
                 deleteUser(resUid.getUid()).then(resActive=>{
-                    res("Ok")
+                    res("ok")
                 }).catch(errActive=>{
                     rej("error isActive on auth user")
                 })
@@ -69,13 +70,13 @@ function createUser(email){
     return new Promise((res,rej)=>{
         getAuth().createUser({
             email: email,
-            password: 'Default',
+            password: 'default',
             emailVerified: false,
             disabled: false,
         }).then((userRecord) => {
             // See the UserRecord reference doc for the contents of userRecord.
             console.log('Successfully created new user:', userRecord.uid);
-            res("Ok")
+            res("ok")
         }).catch((error) => {
             console.log('Error creating new user:', error);
             rej("Error creating new user")
