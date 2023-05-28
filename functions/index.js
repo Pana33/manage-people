@@ -4,6 +4,7 @@ admin.initializeApp();
 const { getFirestore } = require("firebase-admin/firestore");
 const { getAuth } = require("firebase-admin/auth")
 const db = getFirestore();
+const auth = getAuth();
 
 const express = require('express');
 const cors = require('cors');
@@ -39,39 +40,31 @@ function createDocument(table,idDocument,document){
                 console.log("Document created")
                 res("ok")
             }).catch(errDocument=>{
-                console.log("The document can't be created")
+                console.log("The document can't be created ",errDocument)
                 rej("Error creating document")
             })
         }).catch(errCreate=>{
-            console.log("User can't be created")
+            console.log("User can't be created ",errCreate)
             rej("Error creating new user")
         })
     })
 }
 
-function updateDocument(table,idDocument,document,typeUpdate){
+function updateDocument(table,idDocument,currentStatus){
     return new Promise((res,rej)=>{
-        if(typeUpdate == "info"){
-            db.collection(table).doc(idDocument).update(document).then(resInfo=>{
-                res("ok")
-            }).catch(errActive=>{
-                rej("error updating on database")
-            })
-        }else{
-            getUidUser(idDocument).then(resUid=>{
-                db.collection(table).doc(idDocument).update(document).then(resUpdate=>{
-                    changeActiveUser(resUid.getUid(),document).then(resActive=>{
-                        res("ok")
-                    }).catch(errActive=>{
-                        rej("error isActive on auth user")
-                    })
+        getUidUser(idDocument).then(resUid=>{
+            changeActiveUser(resUid.uid,currentStatus).then(resActive=>{
+                db.collection(table).doc(idDocument).update({ isActive:!currentStatus }).then(resUpdate=>{
+                    res("ok")
                 }).catch(errActive=>{
-                    rej("error isActive on database")
+                    rej("error isActive on database ",errActive)
                 })
             }).catch(errActive=>{
-                rej("getting the uid")
+                rej("error isActive on auth user ",errActive)
             })
-        }
+        }).catch(errActive=>{
+            rej("getting the uid ",errActive)
+        })
     })
 }
 
@@ -79,7 +72,7 @@ function deleteDocument(table,idDocument){
     return new Promise((res,rej)=>{
         getUidUser(idDocument).then(resUid=>{
             db.collection(table).doc(idDocument).delete().then(resDelete=>{
-                deleteUser(resUid.getUid()).then(resActive=>{
+                deleteUser(resUid.uid).then(resActive=>{
                     res("ok")
                 }).catch(errActive=>{
                     rej("error isActive on auth user")
@@ -96,7 +89,7 @@ function deleteDocument(table,idDocument){
 //como el moldeado de la data o conseguir el uid del usuario por ejemplo
 function createUser(email){
     return new Promise((res,rej)=>{
-        getAuth().createUser({
+        auth.createUser({
             email: email,
             password: 'default',
             emailVerified: false,
@@ -113,8 +106,8 @@ function createUser(email){
 
 function getUidUser(email){
     return new Promise ((res,rej)=>{
-        getAuth().getUserByEmail(email).then((userRecord) => {
-            console.log(`Successfully fetched user data: ${userRecord.getUid()}`);
+        auth.getUserByEmail(email).then((userRecord) => {
+            console.log(`Successfully fetched user data: ${userRecord.uid}`);
             res(userRecord)
         })
         .catch((error) => {
@@ -126,7 +119,7 @@ function getUidUser(email){
 
 function changeActiveUser(uid,status){
     return new Promise ((res,rej)=>{
-        getAuth().updateUser(uid, {disabled: status}).then((userRecord) => {
+        auth.updateUser(uid, {disabled: status}).then((userRecord) => {
             console.log('Successfully updated user', userRecord.toJSON());
             res(userRecord)
         })
@@ -139,7 +132,7 @@ function changeActiveUser(uid,status){
 
 function deleteUser(uid){
     return new Promise ((res,rej)=>{
-        getAuth().deleteUser(uid).then(() => {
+        auth.deleteUser(uid).then(() => {
             console.log('User deleted');
             res(userRecord);
         }).catch((error) => {
@@ -153,19 +146,22 @@ function deleteUser(uid){
 app.post('/addUser',(req,res)=>{
     console.log(req.body);
     let documentNewUser = new NewUser(req.body)
-    console.log(documentNewUser)
-    // createDocument(strings.TABLE_USERS,userData.emailUser,documentNewUser).then(resCreate=>{
-    //     res.send(JSON.stringify({"estatus":"ok"}))
-    // }).catch(errCreate=>{
-    //     res.send(JSON.stringify({"estatus":errCreate}))
-    // })
-    res.send(JSON.stringify({"estatus":"ok"}))
+    let dataToFirebase = {...documentNewUser}
+    console.log(dataToFirebase)
+    createDocument(strings.TABLE_USERS,documentNewUser.emailUser,dataToFirebase).then(resCreate=>{
+        res.send(JSON.stringify({"estatus":"ok"}))
+    }).catch(errCreate=>{
+        res.send(JSON.stringify({"estatus":errCreate}))
+    })
 })
 
-app.put('/updateUser',(req,res)=>{
+app.put('/disableEnableUser',(req,res)=>{
     console.log(req.body);
-    let userData = req.body;
-    res.send("ok")
+    updateDocument(strings.TABLE_USERS,req.body.emailUser,req.body.isActive,).then(resUpdate=>{
+        res.send(JSON.stringify({"estatus":"ok"}))
+    }).catch(errUpdate=>{
+        res.send(JSON.stringify({"estatus":errUpdate}))
+    })
 })
 
 app.put('/deleteUser',(req,res)=>{
@@ -180,7 +176,7 @@ app.post('/addEmployee',(req,res)=>{
     res.send("ok")
 })
 
-app.put('/updateEmployee',(req,res)=>{
+app.put('/disableEnableEmployee',(req,res)=>{
     console.log(req.body);
     let employeeData = req.body;
     res.send("ok")
