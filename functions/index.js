@@ -189,7 +189,7 @@ app.put('/deleteUser',(req,res)=>{
 app.post('/addEmployee',(req,res)=>{
     console.log(req.body);
     let documentNewEmployee = new NewEmployee(req.body)
-    let dataToFirebase = {...documentNewUser}
+    let dataToFirebase = {...documentNewEmployee}
     console.log(dataToFirebase)
     createDocument(strings.TABLE_EMPLOYEE,documentNewEmployee.emailEmployee,dataToFirebase).then(resCreate=>{
         res.send(JSON.stringify({"estatus":"ok"}))
