@@ -14,8 +14,10 @@ app.use(cors({ origin: "http://localhost:4200", methods:["POST","PUT"] }));
 
 class ConstantStrings {
     TABLE_USERS = "Users"
-    TABLE_EMPLOYEE = "Employee"
+    TABLE_EMPLOYEE = "Employees"
 }
+
+const strings = new ConstantStrings()
 
 class NewUser {
     changePw = true
@@ -30,7 +32,18 @@ class NewUser {
     }
 }
 
-const strings = new ConstantStrings()
+class NewEmployee {
+    changePw = true
+    dtCreated = new Date()
+    isActive = true
+    constructor(objectWithInfo){
+        this.curp = objectWithInfo.curp
+        this.emailEmployee = objectWithInfo.emailEmployee
+        this.firstName = objectWithInfo.firstName
+        this.fullName = objectWithInfo.firstName + " " + objectWithInfo.lastName
+        this.lastName = objectWithInfo.lastName
+    }
+}
 
 //Funciones principales, realizan la insercion, creacion y edicion de la data
 function createDocument(table,idDocument,document){
@@ -71,14 +84,14 @@ function updateDocument(table,idDocument,currentStatus){
 function deleteDocument(table,idDocument){
     return new Promise((res,rej)=>{
         getUidUser(idDocument).then(resUid=>{
-            db.collection(table).doc(idDocument).delete().then(resDelete=>{
-                deleteUser(resUid.uid).then(resActive=>{
+            deleteUser(resUid.uid).then(resActive=>{
+                db.collection(table).doc(idDocument).delete().then(resDelete=>{
                     res("ok")
                 }).catch(errActive=>{
-                    rej("error isActive on auth user")
+                    rej("error isActive on database")
                 })
             }).catch(errActive=>{
-                rej("error isActive on database")
+                rej("error isActive on auth user")
             })
         }).catch(errActive=>{
             rej("getting the uid")
@@ -132,7 +145,7 @@ function changeActiveUser(uid,status){
 
 function deleteUser(uid){
     return new Promise ((res,rej)=>{
-        auth.deleteUser(uid).then(() => {
+        auth.deleteUser(uid).then((userRecord) => {
             console.log('User deleted');
             res(userRecord);
         }).catch((error) => {
@@ -166,26 +179,41 @@ app.put('/disableEnableUser',(req,res)=>{
 
 app.put('/deleteUser',(req,res)=>{
     console.log(req.body);
-    let userData = req.body;
-    res.send("ok")
+    deleteDocument(strings.TABLE_USERS,req.body.emailUser).then(resDelete=>{
+        res.send(JSON.stringify({"estatus":"ok"}))
+    }).catch(errDelete=>{
+        res.send(JSON.stringify({"estatus":errDelete}))
+    })
 })
 
 app.post('/addEmployee',(req,res)=>{
     console.log(req.body);
-    let employeeData = req.body;
-    res.send("ok")
+    let documentNewEmployee = new NewEmployee(req.body)
+    let dataToFirebase = {...documentNewUser}
+    console.log(dataToFirebase)
+    createDocument(strings.TABLE_EMPLOYEE,documentNewEmployee.emailEmployee,dataToFirebase).then(resCreate=>{
+        res.send(JSON.stringify({"estatus":"ok"}))
+    }).catch(errCreate=>{
+        res.send(JSON.stringify({"estatus":errCreate}))
+    })
 })
 
 app.put('/disableEnableEmployee',(req,res)=>{
     console.log(req.body);
-    let employeeData = req.body;
-    res.send("ok")
+    updateDocument(strings.TABLE_EMPLOYEE,req.body.emailEmployee,req.body.isActive,).then(resUpdate=>{
+        res.send(JSON.stringify({"estatus":"ok"}))
+    }).catch(errUpdate=>{
+        res.send(JSON.stringify({"estatus":errUpdate}))
+    })
 })
 
 app.put('/deleteEmployee',(req,res)=>{
     console.log(req.body);
-    let employeeData = req.body;
-    res.send("ok")
+    deleteDocument(strings.TABLE_EMPLOYEE,req.body.emailEmployee).then(resDelete=>{
+        res.send(JSON.stringify({"estatus":"ok"}))
+    }).catch(errDelete=>{
+        res.send(JSON.stringify({"estatus":errDelete}))
+    })
 })
 
 exports.managePeople = functions.https.onRequest(app);
